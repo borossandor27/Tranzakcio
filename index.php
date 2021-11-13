@@ -4,7 +4,9 @@ header('Content-type: text/html; charset=utf-8');
 class Utalas {
     
     private $mysqli = null;
-    
+    public $sikeres = false;
+
+
     public function __construct() {
         try {
             $this->mysqli = new mysqli('localhost', 'root', '', 'bankszamlak');
@@ -21,7 +23,7 @@ class Utalas {
             // --  Lekérdezzük a rendelkezésre álló összeget
             $kuldoEgyenlege = 0;
             if($this->mysqli->query("SELECT osszeg FROM szamlak WHERE id = ".$from)->fetch_assoc()['osszeg'] < $osszeg){
-                echo '<li>Nem áll rendelkezésre az összeg! egyenlege csak </li>';
+                echo '<li class="rollback">Nem áll rendelkezésre az utalni kívánt '.number_format($osszeg,0,","," ").' Ft!</li>';
                 return false;
             } else {
                 echo '<li>Rendelkezésre áll az összeg!</lil>';    
@@ -30,7 +32,7 @@ class Utalas {
             if($this->mysqli->query("UPdate szamlak SET osszeg = osszeg - ".$osszeg." WHERE id = ".$from) && $this->mysqli->affected_rows == 1){
                 echo '<li>'.$osszeg.' Ft összeg levonása sikeres!</li>';
             } else {
-                echo '<li>'.$osszeg.' Ft összeg levonása sikertelen</li>';
+                echo '<li class="rollback">'.$osszeg.' Ft összeg levonása sikertelen</li>';
                 return;
             }
             //-- Jóváírás ---------------------------------------
@@ -40,11 +42,13 @@ class Utalas {
 //            var_dump($result);
 //            var_dump($this->mysqli->affected_rows );
             if($this->mysqli->affected_rows === 1){
-                echo '<li>'.$osszeg.' Ft összeg jóváírása sikeres!</li>';
+                echo '<li class="commit">'.$osszeg.' Ft összeg jóváírása sikeres!</li>';
                 $this->mysqli->commit();
+                $this->sikeres = true;
             } else {
                 $this->mysqli->rollback();
-                echo '<li>'.$osszeg.' Ft összeg jóváírása sikertelen!</li>';
+                echo '<li class="rollback">'.$osszeg.' Ft összeg jóváírása sikertelen!</li>';
+                $this->sikeres = false;
             }
             echo '</ul>';
         } catch (Exception $ex) {
@@ -84,6 +88,14 @@ and open the template in the editor.
             }
             td {
                 padding: .5rem 1.5rem;
+            }
+            .commit {
+                color: green;
+                background-color: #C6EFCE;
+            }
+            .rollback {
+                color: red;
+                background-color: #FFC7CE;
             }
         </style>
     </head>
@@ -128,7 +140,7 @@ and open the template in the editor.
             $obj->utalas(1, 2, 10000);
         ?>
         <h2>Számlák utalás után</h2>
-        <table>
+        <table class="<?php echo $obj->sikeres?'commit':'rollback'; ?>">
             <tr>
                 <th>id</th>
                 <th>név</th>
